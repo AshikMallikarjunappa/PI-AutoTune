@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="PI Autotune Tool", layout="wide")
 st.title("PI Autotune Tool")
@@ -16,7 +17,7 @@ with tab1:
 Welcome to the **PI Autotune Tool**! This app lets you simulate a PI controller and understand how the proportional and integral terms affect the output.
 
 - **Simulation Tab**: manually test PI values  
-- **CSV Tuning Tab**: upload logged data to get suggested PI values with feedback
+- **CSV Tuning Tab**: upload logged data to get suggested PI values with feedback and see a visual comparison of controller response.
 """)
 
 # ------------------ Simulation Tab ------------------
@@ -60,7 +61,7 @@ with tab3:
     st.header("CSV Tuning: Suggest PI Values")
     st.markdown("""
 Upload a CSV with columns: `Time, Feedback, Setpoint`  
-The app will suggest **Kp** and **Ki**, and provide feedback on the system behavior.
+The app will suggest **Kp** and **Ki**, and provide feedback on the system behavior and compare PI responses.
 """)
 
     # ------------------ CSV Template with 3000 rows ------------------
@@ -72,7 +73,7 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
     setpoint = np.full(3000, 24.0)  # constant setpoint
 
     df_template = pd.DataFrame({
-        "Time": [dt.strftime("%-m/%-d/%Y %H:%M") for dt in times],
+        "Time": [dt.strftime("%-m/%-d/%Y %H:%M:%S") for dt in times],
         "Feedback": feedback.round(2),
         "Setpoint": setpoint
     })
@@ -125,5 +126,40 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
                 st.warning("🌀 Ki is strong; watch for oscillations.")
             elif suggested_Ki < 0.05:
                 st.info("ℹ️ Ki is small; integral effect may be slow.")
+
+            # ----------------- Plot PI response -----------------
+            I_suggested = 0.0
+            Output_suggested = []
+            FB_series = df["Feedback"].values
+            SP_series = df["Setpoint"].values
+
+            for FB_i, SP_i in zip(FB_series, SP_series):
+                E_i = SP_i - FB_i
+                P_i = suggested_Kp * E_i
+                I_suggested += suggested_Ki * E_i / 60.0
+                Output_suggested.append(P_i + I_suggested + 50)
+
+            # Previous PI (rough estimation)
+            I_orig = 0.0
+            Output_orig = []
+            for FB_i, SP_i in zip(FB_series, SP_series):
+                E_i = SP_i - FB_i
+                P_i = (delta_error / (delta_fb + 1e-6)) * E_i if delta_fb != 0 else 0
+                I_orig += (suggested_Ki * E_i / 60.0)
+                Output_orig.append(P_i + I_orig + 50)
+
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df["Time"], y=Output_orig, mode='lines', name="Previous PI Response"))
+            fig.add_trace(go.Scatter(x=df["Time"], y=Output_suggested, mode='lines', name="Suggested PI Response"))
+            fig.update_layout(
+                title="PI Controller Response Comparison",
+                xaxis_title="Time",
+                yaxis_title="Controller Output",
+                legend=dict(x=0, y=1),
+                template="plotly_white",
+                height=500
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
         else:
             st.error("CSV must contain 'Time', 'Feedback', and 'Setpoint' columns")
