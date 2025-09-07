@@ -1,6 +1,7 @@
 import streamlit as st
 import numpy as np
 import pandas as pd
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="PI Autotune Tool", layout="wide")
 st.title("PI Autotune Tool")
@@ -62,16 +63,25 @@ Upload a CSV with columns: `Time, Feedback, Setpoint`
 The app will suggest **Kp** and **Ki**, and provide feedback on the system behavior.
 """)
 
-    template_df = pd.DataFrame({
-        "Time": ["00:00:00", "00:00:01", "00:00:02"],
-        "Feedback": [22.0, 22.1, 22.3],
-        "Setpoint": [24.0, 24.0, 24.0]
+    # ------------------ CSV Template with 3000 rows ------------------
+    start_time = datetime(2025, 8, 10, 14, 20)
+    times = [start_time + timedelta(seconds=i) for i in range(3000)]
+
+    np.random.seed(0)
+    feedback = 22 + np.cumsum(np.random.randn(3000)*0.05)  # small random walk
+    setpoint = np.full(3000, 24.0)  # constant setpoint
+
+    df_template = pd.DataFrame({
+        "Time": [dt.strftime("%-m/%-d/%Y %H:%M") for dt in times],
+        "Feedback": feedback.round(2),
+        "Setpoint": setpoint
     })
-    csv_template = template_df.to_csv(index=False)
+
+    csv_template_3000 = df_template.to_csv(index=False)
     st.download_button(
         label="Download CSV Template",
-        data=csv_template,
-        file_name="pi_logged_data_template.csv",
+        data=csv_template_3000,
+        file_name="pi_logged_data_template_3000.csv",
         mime="text/csv"
     )
 
