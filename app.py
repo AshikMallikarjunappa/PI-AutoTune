@@ -1,10 +1,11 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 
 st.title("PI Autotune Tool")
 
-# Create two tabs: Directions and Simulation
-tab1, tab2 = st.tabs(["Directions", "Simulation"])
+# Tabs: Directions, Simulation, CSV Tuning
+tab1, tab2, tab3 = st.tabs(["Directions", "Simulation", "CSV Tuning"])
 
 # ------------------ Directions Tab ------------------
 with tab1:
@@ -12,46 +13,8 @@ with tab1:
     st.markdown("""
 Welcome to the **PI Autotune Tool**! This app lets you simulate a PI controller and understand how the proportional and integral terms affect the output.
 
----
-
-### Step 1: Enter Inputs
-Use the **sidebar** to enter:
-
-- **Feedback (FB):** Current measured value (e.g., temperature)  
-- **Setpoint (SP):** Target value  
-- **Proportional constant (Kp):** How strongly the controller reacts  
-- **Integral constant (Ki):** Accumulates past error  
-- **Max integral change (IMX):** Max allowed per-second change  
-- **Integral startup (STUP):** Initial integral value  
-- **Integral limit (ILMT):** Maximum absolute integral  
-
----
-
-### Step 2: How Calculations Work
-1. **Error (E):** Difference between FB and SP  
-2. **Proportional (P):** `Kp * E`  
-3. **Integral (I):** Cumulative correction, limited by `IMX` and `ILMT`  
-4. **Output:** `P + I + 50`
-
----
-
-### Step 3: Review Results
-You'll see:
-
-- **Error (E)**  
-- **Proportional (P)**  
-- **Integral increment (Iinc)**  
-- **Integral term (I)**  
-- **Controller Output**
-
----
-
-### Tips:
-- Start with small Kp/Ki values to avoid overshoot  
-- Use IMX and ILMT to prevent windup  
-- Adjust STUP if starting from non-zero integral  
-
-Happy tuning! 🚀
+- Use **Simulation** to manually test PI values.  
+- Use **CSV Tuning** to upload logged data and get recommended PI settings.
 """)
 
 # ------------------ Simulation Tab ------------------
@@ -97,3 +60,34 @@ with tab2:
     st.write(f"Integral increment (Iinc): {Iinc:.4f}")
     st.write(f"Integral (I): {I:.2f}")
     st.write(f"Output: {Output:.2f}")
+
+# ------------------ CSV Tuning Tab ------------------
+with tab3:
+    st.header("Upload Logged Data for PI Suggestion")
+    st.markdown("""
+Upload a CSV with columns like:  
+`Time, Feedback, Setpoint`  
+The app will analyze the error trend and suggest initial **Kp** and **Ki** values.
+""")
+    uploaded_file = st.file_uploader("Upload CSV", type="csv")
+
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file)
+        st.write("Preview of your data:")
+        st.dataframe(df.head())
+
+        if all(col in df.columns for col in ["Time", "Feedback", "Setpoint"]):
+            # Simple PI suggestion logic
+            error = df["Setpoint"] - df["Feedback"]
+            delta_fb = df["Feedback"].diff().abs().mean()  # average feedback change
+            delta_error = error.diff().abs().mean()
+
+            # Suggested Kp and Ki (simple heuristic)
+            suggested_Kp = round(delta_error / (delta_fb + 1e-6), 2)
+            suggested_Ki = round(suggested_Kp / 10, 3)  # smaller integral
+
+            st.success("Suggested PI values based on uploaded data:")
+            st.write(f"**Kp:** {suggested_Kp}")
+            st.write(f"**Ki:** {suggested_Ki}")
+        else:
+            st.error("CSV must contain 'Time', 'Feedback', and 'Setpoint' columns")
