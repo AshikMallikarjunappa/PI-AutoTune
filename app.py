@@ -2,7 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="PI Autotune Tool", layout="wide")
 st.title("PI Autotune Tool")
@@ -127,7 +127,7 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
             elif suggested_Ki < 0.05:
                 st.info("ℹ️ Ki is small; integral effect may be slow.")
 
-            # ----------------- Plot PI response -----------------
+            # ----------------- Plot PI response using Matplotlib -----------------
             I_suggested = 0.0
             Output_suggested = []
             FB_series = df["Feedback"].values
@@ -148,18 +148,16 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
                 I_orig += (suggested_Ki * E_i / 60.0)
                 Output_orig.append(P_i + I_orig + 50)
 
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df["Time"], y=Output_orig, mode='lines', name="Previous PI Response"))
-            fig.add_trace(go.Scatter(x=df["Time"], y=Output_suggested, mode='lines', name="Suggested PI Response"))
-            fig.update_layout(
-                title="PI Controller Response Comparison",
-                xaxis_title="Time",
-                yaxis_title="Controller Output",
-                legend=dict(x=0, y=1),
-                template="plotly_white",
-                height=500
-            )
-            st.plotly_chart(fig, use_container_width=True)
+            # Plot
+            fig, ax = plt.subplots(figsize=(12, 4))
+            ax.plot(df["Time"], Output_orig, label="Previous PI Response")
+            ax.plot(df["Time"], Output_suggested, label="Suggested PI Response")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Controller Output")
+            ax.set_title("PI Controller Response Comparison")
+            ax.legend()
+            plt.xticks(rotation=45)
+            st.pyplot(fig)
 
         else:
             st.error("CSV must contain 'Time', 'Feedback', and 'Setpoint' columns")
