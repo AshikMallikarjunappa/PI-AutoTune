@@ -1,69 +1,15 @@
-import streamlit as st
-import numpy as np
-import pandas as pd
-
-st.set_page_config(page_title="PI Autotune Tool", layout="wide")
-st.title("PI Autotune Tool")
-
-# ------------------ Tabs ------------------
-tab1, tab2, tab3 = st.tabs(["Directions", "Simulation", "CSV Tuning"])
-
-# ------------------ Directions Tab ------------------
-with tab1:
-    st.header("How to Use the PI Autotune Tool")
-    st.markdown("""
-Welcome to the **PI Autotune Tool**! This app lets you simulate a PI controller and understand how the proportional and integral terms affect the output.
-
-- **Simulation Tab**: manually test PI values  
-- **CSV Tuning Tab**: upload logged data to get suggested PI values with feedback
-""")
-
-# ------------------ Simulation Tab ------------------
-with tab2:
-    st.sidebar.header("Simulation Inputs")
-    FB = st.sidebar.number_input("Feedback (FB)", value=22.0)
-    SP = st.sidebar.number_input("Setpoint (SP)", value=24.0)
-    Kp = st.sidebar.number_input("Proportional constant (Kp)", value=1.0)
-    Ki = st.sidebar.number_input("Integral constant (Ki)", value=0.1)
-    IMX = st.sidebar.number_input("Max integral change (IMX)", value=10.0)
-    STUP = st.sidebar.number_input("Integral startup (STUP)", value=0.0)
-    ILMT = st.sidebar.number_input("Integral limit (ILMT)", value=100.0)
-
-    if "Iprev" not in st.session_state:
-        st.session_state.Iprev = STUP
-
-    E = FB - SP
-    P = Kp * E
-
-    if Ki == 0:
-        Iinc = 0.0
-        I = STUP
-    else:
-        Iinc = (Ki * E) / 60.0
-        Iinc = np.clip(Iinc, -IMX / 60.0, IMX / 60.0)
-        I = st.session_state.Iprev + Iinc
-        I = np.clip(I, -ILMT, ILMT)
-
-    st.session_state.Iprev = I
-    Output = P + I + 50
-
-    st.subheader("Simulation Results")
-    st.write(f"Error (E): {E:.2f}")
-    st.write(f"Proportional (P): {P:.2f}")
-    st.write(f"Integral increment (Iinc): {Iinc:.4f}")
-    st.write(f"Integral (I): {I:.2f}")
-    st.write(f"Controller Output: {Output:.2f}")
-
 # ------------------ CSV Tuning Tab ------------------
 with tab3:
     st.header("CSV Tuning: Suggest PI Values")
     st.markdown("""
 Upload a CSV with columns: `Time, Feedback, Setpoint`  
+Time format example: `8/10/2025 14:20`  
 The app will suggest **Kp** and **Ki**, and provide feedback on the system behavior.
 """)
 
+    # CSV Template with datetime format
     template_df = pd.DataFrame({
-        "Time": ["00:00:00", "00:00:01", "00:00:02"],
+        "Time": ["8/10/2025 14:20", "8/10/2025 14:21", "8/10/2025 14:22"],
         "Feedback": [22.0, 22.1, 22.3],
         "Setpoint": [24.0, 24.0, 24.0]
     })
@@ -79,6 +25,10 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
 
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
+
+        # Parse Time column as datetime
+        df["Time"] = pd.to_datetime(df["Time"], format="%m/%d/%Y %H:%M")
+
         st.write("Preview of uploaded data:")
         st.dataframe(df.head())
 
@@ -115,5 +65,29 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
                 st.warning("🌀 Ki is strong; watch for oscillations.")
             elif suggested_Ki < 0.05:
                 st.info("ℹ️ Ki is small; integral effect may be slow.")
+
+            # Optional: use datetime for plotting
+            import matplotlib.pyplot as plt
+            I_sim = [0]
+            Output_sim = []
+            for fb in df["Feedback"]:
+                E_step = df["Setpoint"].iloc[0] - fb
+                I_inc = (suggested_Ki * E_step) / 60.0
+                I_new = np.clip(I_sim[-1] + I_inc, -100, 100)
+                I_sim.append(I_new)
+                Output_sim.append(suggested_Kp * E_step + I_new + 50)
+
+            plt.figure(figsize=(10, 4))
+            plt.plot(df["Time"], df["Setpoint"], label="Setpoint", linestyle="--")
+            plt.plot(df["Time"], df["Feedback"], label="Feedback")
+            plt.plot(df["Time"], Output_sim, label="Simulated PI Output")
+            plt.xticks(rotation=45)
+            plt.xlabel("Time")
+            plt.ylabel("Value")
+            plt.title("PI Response Visualization")
+            plt.legend()
+            plt.tight_layout()
+            st.pyplot(plt)
+
         else:
             st.error("CSV must contain 'Time', 'Feedback', and 'Setpoint' columns")
