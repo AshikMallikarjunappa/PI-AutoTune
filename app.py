@@ -68,7 +68,7 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
     times = [start_time + timedelta(seconds=i) for i in range(3000)]
 
     np.random.seed(0)
-    feedback = 22 + np.cumsum(np.random.randn(3000)*0.05)  # small random walk
+    feedback = 22 + np.cumsum(np.random.randn(3000) * 0.05)  # small random walk
     setpoint = np.full(3000, 24.0)  # constant setpoint
 
     df_template = pd.DataFrame({
@@ -85,6 +85,7 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
         mime="text/csv"
     )
 
+    # ------------------ File Uploader ------------------
     uploaded_file = st.file_uploader("Upload your CSV", type="csv")
 
     if uploaded_file is not None:
@@ -125,5 +126,22 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
                 st.warning("🌀 Ki is strong; watch for oscillations.")
             elif suggested_Ki < 0.05:
                 st.info("ℹ️ Ki is small; integral effect may be slow.")
+
+            # ----------------- Simulated PI Response -----------------
+            sim_feedback = [df["Feedback"].iloc[0]]
+            I_term = 0.0
+            for sp in df["Setpoint"]:
+                e = sp - sim_feedback[-1]
+                P = suggested_Kp * e
+                I_term += suggested_Ki * e
+                new_fb = sim_feedback[-1] + 0.1 * (P + I_term)  # simple plant model
+                sim_feedback.append(new_fb)
+
+            df["Simulated_PI"] = sim_feedback[:len(df)]
+
+            # ----------------- Chart -----------------
+            st.subheader("Performance Chart: Current PI vs Suggested PI")
+            st.line_chart(df[["Feedback", "Setpoint", "Simulated_PI"]], use_container_width=True)
+
         else:
             st.error("CSV must contain 'Time', 'Feedback', and 'Setpoint' columns")
