@@ -142,39 +142,83 @@ with tab4:
     st.header("Alerton Control Strategies")
     st.markdown("Choose a control strategy and adjust **Response Speed** (slow ↔ fast).")
 
-    # Alerton device speed defaults (sec/stroke) and Kp/Ki base
+    # Alerton preset values from your provided INI
     controls = {
-        "Standard Zone Heating Signal": dict(KpBase=12, OutputSpeed=2000),
-        "Standard Zone Cooling Signal": dict(KpBase=12, OutputSpeed=2000),
-        "Standard Economizer Control": dict(KpBase=0.6, OutputSpeed=600),
-        "Standard Supply DSP Control": dict(KpBase=0, OutputSpeed=60),
-        "Standard SAT Heating Valve": dict(KpBase=0.6, OutputSpeed=600),
-        "Standard BSP Fan Control": dict(KpBase=0, OutputSpeed=60),
+        "Standard Zone Heating Signal": {
+            "DirectActing": 0,
+            "FeedbackResponse": -23,
+            "KpVal": 12,
+            "KiVal": 1,
+            "ImaxVal": 3,
+            "IlimitVal": 50,
+            "StupVal": 30
+        },
+        "Standard Zone Cooling Signal": {
+            "DirectActing": 1,
+            "FeedbackResponse": -23,
+            "KpVal": 12,
+            "KiVal": 1,
+            "ImaxVal": 3,
+            "IlimitVal": 50,
+            "StupVal": -30
+        },
+        "Standard Economizer Control": {
+            "DirectActing": 1,
+            "FeedbackResponse": 6,
+            "KpVal": 0.6,
+            "KiVal": 1.5,
+            "ImaxVal": 60,
+            "IlimitVal": 50,
+            "StupVal": -50
+        },
+        "Standard Supply DSP Control": {
+            "DirectActing": 0,
+            "FeedbackResponse": 0,
+            "KpVal": 0,
+            "KiVal": 30,
+            "ImaxVal": 60,
+            "IlimitVal": 50,
+            "StupVal": 30
+        },
+        "Standard SAT Heating Valve": {
+            "DirectActing": 0,
+            "FeedbackResponse": 6,
+            "KpVal": 0.6,
+            "KiVal": 1.5,
+            "ImaxVal": 60,
+            "IlimitVal": 50,
+            "StupVal": 50
+        },
+        "Standard BSP Fan Control": {
+            "DirectActing": 1,
+            "FeedbackResponse": -23,
+            "KpVal": 0,
+            "KiVal": 25,
+            "ImaxVal": 20,
+            "IlimitVal": 50,
+            "StupVal": 0
+        }
     }
 
     selected = st.selectbox("Choose a control strategy:", list(controls.keys()))
     params = controls[selected]
 
-    # Response speed slider (0.5 = slow, 2.0 = fast)
+    # Response speed slider
     response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
 
-    # Calculate Alerton-style PI parameters
-    Kp_calculated = round(params["KpBase"] * response_speed, 2)
-    Ki_calculated = round(60 / params["OutputSpeed"], 3)  # Ki ≈ 60 / Device Speed
-    Imax_calculated = round(3 * response_speed, 2)         # scaled
-    ILMT = 50
-    STUP = -30
-
-    alerton_params = {
-        "Kp": Kp_calculated,
-        "Ki": Ki_calculated,
-        "I-max": Imax_calculated,
-        "I-limit": ILMT,
-        "STUP": STUP
+    # Scale only Kp, Ki, Imax by response slider
+    scaled_params = {
+        "DirectActing": params["DirectActing"],
+        "FeedbackResponse": params["FeedbackResponse"],
+        "Kp": round(params["KpVal"] * response_speed, 3),
+        "Ki": round(params["KiVal"] * response_speed, 3),
+        "Imax": round(params["ImaxVal"] * response_speed, 3),
+        "Ilimit": params["IlimitVal"],
+        "STUP": params["StupVal"]
     }
 
-    st.subheader(f"{selected} Parameters (Alerton-style)")
-    st.json(alerton_params)
+    st.subheader(f"{selected} Parameters (scaled by Response Speed)")
+    st.json(scaled_params)
 
 # ------------------ PI Loop Overview ------------------
 st.markdown("---")
