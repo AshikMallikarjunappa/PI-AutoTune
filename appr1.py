@@ -142,25 +142,39 @@ with tab4:
     st.header("Alerton Control Strategies")
     st.markdown("Choose a control strategy and adjust **Response Speed** (slow ↔ fast).")
 
+    # Alerton device speed defaults (sec/stroke) and Kp/Ki base
     controls = {
-        "Standard Zone Heating Signal": dict(KpVal=12, KiVal=1),
-        "Standard Zone Cooling Signal": dict(KpVal=12, KiVal=1),
-        "Standard Economizer Control": dict(KpVal=0.6, KiVal=1.5),
-        "Standard Supply DSP Control": dict(KpVal=0, KiVal=30),
-        "Standard SAT Heating Valve": dict(KpVal=0.6, KiVal=1.5),
-        "Standard BSP Fan Control": dict(KpVal=0, KiVal=25),
+        "Standard Zone Heating Signal": dict(KpBase=12, OutputSpeed=2000),
+        "Standard Zone Cooling Signal": dict(KpBase=12, OutputSpeed=2000),
+        "Standard Economizer Control": dict(KpBase=0.6, OutputSpeed=600),
+        "Standard Supply DSP Control": dict(KpBase=0, OutputSpeed=60),
+        "Standard SAT Heating Valve": dict(KpBase=0.6, OutputSpeed=600),
+        "Standard BSP Fan Control": dict(KpBase=0, OutputSpeed=60),
     }
 
     selected = st.selectbox("Choose a control strategy:", list(controls.keys()))
     params = controls[selected]
 
-    # Unified response speed slider
+    # Response speed slider (0.5 = slow, 2.0 = fast)
     response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
 
-    scaled_params = {k: round(v * response_speed, 3) for k, v in params.items()}
+    # Calculate Alerton-style PI parameters
+    Kp_calculated = round(params["KpBase"] * response_speed, 2)
+    Ki_calculated = round(60 / params["OutputSpeed"], 3)  # Ki ≈ 60 / Device Speed
+    Imax_calculated = round(3 * response_speed, 2)         # scaled
+    ILMT = 50
+    STUP = -30
 
-    st.subheader(f"{selected} Parameters (scaled)")
-    st.json(scaled_params)
+    alerton_params = {
+        "Kp": Kp_calculated,
+        "Ki": Ki_calculated,
+        "I-max": Imax_calculated,
+        "I-limit": ILMT,
+        "STUP": STUP
+    }
+
+    st.subheader(f"{selected} Parameters (Alerton-style)")
+    st.json(alerton_params)
 
 # ------------------ PI Loop Overview ------------------
 st.markdown("---")
@@ -170,24 +184,19 @@ st.markdown(
 ### Proportional Constant (Kp)
 - Controls how strongly output responds to error.  
 - Higher Kp → faster correction, but risk of overshoot.  
-- Example: Kp = 12.0, Setpoint = 74, Feedback = 76 → Error = 2 → Output adds 24.  
 
 ### Integral Constant (Ki)
 - Adjusts correction over time for persistent errors.  
 - Higher Ki → quicker correction of steady-state error, but can cause oscillation.  
-- Example: Ki = 1.0 → Output increases by 2 per minute when error = 2.  
 
 ### Maximum Integral Change (Imax)
 - Limits how fast the integral term can change per minute.  
-- Should match actuator speed (e.g., 20 for 5-min VAV damper stroke).  
 
 ### Integral Limit (Ilimit)
 - Caps total integral contribution to prevent "windup".  
-- Typically ±50 to keep output within 0–100%.  
 
 ### Integral Startup (STUP)
 - Sets initial integral value at startup.  
-- Example: If startup output should be 20, set STUP = -30 (50 + -30 = 20).  
 
 ### Direct Acting vs Reverse Acting
 - **Direct Acting**: Output increases when feedback is below setpoint.  
