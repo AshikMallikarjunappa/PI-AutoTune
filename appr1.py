@@ -149,34 +149,24 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    st.markdown("Adjust parameters for different standard Alerton control strategies using the sliders below.")
+    st.markdown("Choose a control strategy and adjust response speed (slow ↔ fast).")
 
     controls = {
-        "Standard Zone Heating Signal": dict(DirectActing=0, FeedbackResponse=-23, SmallestSetptInc=0.5, UseKp=1, UseKi=1, OutputResponse=2000, Ilimit=50, StartPosition=20, KpVal=12, KiVal=1, ImaxVal=3, IlimitVal=50, StupVal=30),
-        "Standard Zone Cooling Signal": dict(DirectActing=1, FeedbackResponse=-23, SmallestSetptInc=0.5, UseKp=1, UseKi=1, OutputResponse=2000, Ilimit=50, StartPosition=20, KpVal=12, KiVal=1, ImaxVal=3, IlimitVal=50, StupVal=-30),
-        "Standard Economizer Control": dict(DirectActing=1, FeedbackResponse=6, SmallestSetptInc=2.5, UseKp=1, UseKi=1, OutputResponse=100, Ilimit=50, StartPosition=0, KpVal=0.6, KiVal=1.5, ImaxVal=60, IlimitVal=50, StupVal=-50),
-        "Standard Supply DSP Control": dict(DirectActing=0, FeedbackResponse=0, SmallestSetptInc=0.1, UseKp=0, UseKi=1, OutputResponse=100, Ilimit=50, StartPosition=20, KpVal=0, KiVal=30, ImaxVal=60, IlimitVal=50, StupVal=30),
-        "Standard SAT Heating Valve": dict(DirectActing=0, FeedbackResponse=6, SmallestSetptInc=2.5, UseKp=1, UseKi=1, OutputResponse=100, Ilimit=50, StartPosition=0, KpVal=0.6, KiVal=1.5, ImaxVal=60, IlimitVal=50, StupVal=50),
-        "Standard BSP Fan Control": dict(DirectActing=1, FeedbackResponse=-23, SmallestSetptInc=0.01, UseKp=0, UseKi=1, OutputResponse=300, Ilimit=50, StartPosition=50, KpVal=0, KiVal=25, ImaxVal=20, IlimitVal=50, StupVal=0),
+        "Standard Zone Heating Signal": dict(KpVal=12, KiVal=1),
+        "Standard Zone Cooling Signal": dict(KpVal=12, KiVal=1),
+        "Standard Economizer Control": dict(KpVal=0.6, KiVal=1.5),
+        "Standard Supply DSP Control": dict(KpVal=0, KiVal=30),
+        "Standard SAT Heating Valve": dict(KpVal=0.6, KiVal=1.5),
+        "Standard BSP Fan Control": dict(KpVal=0, KiVal=25),
     }
 
     selected = st.selectbox("Choose a control strategy:", list(controls.keys()))
     params = controls[selected]
 
-    st.subheader(f"{selected} Parameters")
-    for key, val in params.items():
-        if isinstance(val, (int, float)):
-            # make int sliders for ints, float sliders for floats
-            if isinstance(val, int):
-                min_val = -100 if val < 0 else 0
-                max_val = val * 2 + 50 if val != 0 else 100
-                params[key] = st.slider(key, min_value=int(min_val), max_value=int(max_val), value=int(val))
-            else:
-                min_val = -100.0 if val < 0 else 0.0
-                max_val = float(val * 2 + 50) if val != 0 else 100.0
-                params[key] = st.slider(key, min_value=float(min_val), max_value=float(max_val), value=float(val))
-        else:
-            st.write(f"**{key}:** {val}")
+    # Unified response speed slider
+    response_speed = st.slider("Response Speed", min_value=0.5, max_value=2.0, value=1.0, step=0.1)
 
-    st.json(params)
+    scaled_params = {k: round(v * response_speed, 3) for k, v in params.items()}
 
+    st.subheader(f"{selected} Parameters (scaled)")
+    st.json(scaled_params)
