@@ -166,11 +166,17 @@ with tab4:
     st.subheader(f"{selected} Parameters")
     for key, val in params.items():
         if isinstance(val, (int, float)):
-            # slider range adapts dynamically
-            min_val = -100 if val < 0 else 0
-            max_val = int(val * 2 + 50) if val != 0 else 100
-            params[key] = st.slider(key, min_value=min_val, max_value=max_val, value=float(val))
+            # make int sliders for ints, float sliders for floats
+            if isinstance(val, int):
+                min_val = -100 if val < 0 else 0
+                max_val = val * 2 + 50 if val != 0 else 100
+                params[key] = st.slider(key, min_value=int(min_val), max_value=int(max_val), value=int(val))
+            else:
+                min_val = -100.0 if val < 0 else 0.0
+                max_val = float(val * 2 + 50) if val != 0 else 100.0
+                params[key] = st.slider(key, min_value=float(min_val), max_value=float(max_val), value=float(val))
         else:
             st.write(f"**{key}:** {val}")
 
     st.json(params)
+
