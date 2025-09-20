@@ -20,12 +20,13 @@ Welcome to the **PI Autotune Tool**! This app lets you simulate a PI controller 
 
 - **Simulation Tab**: manually test PI values  
 - **CSV Tuning Tab**: upload logged data to get suggested PI values with feedback  
-- **Alerton Tab**: explore default Alerton control strategies with sliders
+- **Alerton Tab**: explore default Alerton control strategies with sliders and Direct/Reverse acting
 """
     )
 
 # ------------------ Simulation Tab ------------------
 with tab2:
+    st.header("Manual PI Simulation")
     st.sidebar.header("Simulation Inputs")
     FB = st.sidebar.number_input("Feedback (FB)", value=22.0)
     SP = st.sidebar.number_input("Setpoint (SP)", value=24.0)
@@ -35,16 +36,11 @@ with tab2:
     STUP = st.sidebar.number_input("Integral startup (STUP)", value=0.0)
     ILMT = st.sidebar.number_input("Integral limit (ILMT)", value=100.0)
 
-    # Select PI Type
-    pi_type = st.sidebar.radio("PI Type", ["Direct Acting", "Reverse Acting"])
-
     if "Iprev" not in st.session_state:
         st.session_state.Iprev = STUP
 
     # Calculate Error
     E = FB - SP
-    if pi_type == "Reverse Acting":
-        E = -E  # reverse the error for reverse acting mode
 
     # Proportional
     P = Kp * E
@@ -140,85 +136,66 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    st.markdown("Choose a control strategy and adjust **Response Speed** (slow ↔ fast).")
+    st.markdown("Choose a control strategy, Direct/Reverse acting, and adjust Response Speed.")
 
-    # Alerton preset values from your provided INI
+    # Alerton presets
     controls = {
-        "Standard Zone Heating Signal": {
-            "DirectActing": 0,
-            "FeedbackResponse": -23,
-            "KpVal": 12,
-            "KiVal": 1,
-            "ImaxVal": 3,
-            "IlimitVal": 50,
-            "StupVal": 30
-        },
-        "Standard Zone Cooling Signal": {
-            "DirectActing": 1,
-            "FeedbackResponse": -23,
-            "KpVal": 12,
-            "KiVal": 1,
-            "ImaxVal": 3,
-            "IlimitVal": 50,
-            "StupVal": -30
-        },
-        "Standard Economizer Control": {
-            "DirectActing": 1,
-            "FeedbackResponse": 6,
-            "KpVal": 0.6,
-            "KiVal": 1.5,
-            "ImaxVal": 60,
-            "IlimitVal": 50,
-            "StupVal": -50
-        },
-        "Standard Supply DSP Control": {
-            "DirectActing": 0,
-            "FeedbackResponse": 0,
-            "KpVal": 0,
-            "KiVal": 30,
-            "ImaxVal": 60,
-            "IlimitVal": 50,
-            "StupVal": 30
-        },
-        "Standard SAT Heating Valve": {
-            "DirectActing": 0,
-            "FeedbackResponse": 6,
-            "KpVal": 0.6,
-            "KiVal": 1.5,
-            "ImaxVal": 60,
-            "IlimitVal": 50,
-            "StupVal": 50
-        },
-        "Standard BSP Fan Control": {
-            "DirectActing": 1,
-            "FeedbackResponse": -23,
-            "KpVal": 0,
-            "KiVal": 25,
-            "ImaxVal": 20,
-            "IlimitVal": 50,
-            "StupVal": 0
-        }
+        "Standard Zone Heating Signal": {"DirectActing": 0, "KpVal": 12, "KiVal": 1, "ImaxVal": 3, "IlimitVal": 50, "StupVal": 30},
+        "Standard Zone Cooling Signal": {"DirectActing": 1, "KpVal": 12, "KiVal": 1, "ImaxVal": 3, "IlimitVal": 50, "StupVal": -30},
+        "Standard Economizer Control": {"DirectActing": 1, "KpVal": 0.6, "KiVal": 1.5, "ImaxVal": 60, "IlimitVal": 50, "StupVal": -50},
+        "Standard Supply DSP Control": {"DirectActing": 0, "KpVal": 0, "KiVal": 30, "ImaxVal": 60, "IlimitVal": 50, "StupVal": 30},
+        "Standard SAT Heating Valve": {"DirectActing": 0, "KpVal": 0.6, "KiVal": 1.5, "ImaxVal": 60, "IlimitVal": 50, "StupVal": 50},
+        "Standard BSP Fan Control": {"DirectActing": 1, "KpVal": 0, "KiVal": 25, "ImaxVal": 20, "IlimitVal": 50, "StupVal": 0}
     }
 
-    selected = st.selectbox("Choose a control strategy:", list(controls.keys()))
+    selected = st.selectbox("Select control strategy:", list(controls.keys()))
     params = controls[selected]
 
-    # Response speed slider
+    # Direct/Reverse Acting selection based on strategy default
+    acting_options = ["Direct Acting", "Reverse Acting"]
+    default_act = "Direct Acting" if params["DirectActing"] == 0 else "Reverse Acting"
+    pi_type = st.radio("Select Acting Mode:", acting_options, index=acting_options.index(default_act))
+
+    # Response Speed slider
     response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
 
-    # Scale only Kp, Ki, Imax by response slider
-    scaled_params = {
-        "DirectActing": params["DirectActing"],
-        "FeedbackResponse": params["FeedbackResponse"],
-        "Kp": round(params["KpVal"] * response_speed, 3),
-        "Ki": round(params["KiVal"] * response_speed, 3),
-        "Imax": round(params["ImaxVal"] * response_speed, 3),
-        "Ilimit": params["IlimitVal"],
-        "STUP": params["StupVal"]
-    }
+    # Simulation output based on acting mode
+    FB = st.number_input("Feedback Input", value=22.0)
+    SP = st.number_input("Setpoint", value=24.0)
 
-    st.subheader(f"{selected} Parameters (scaled by Response Speed)")
-    st.json(scaled_params)
+    E = FB - SP
+    if pi_type == "Reverse Acting":
+        E = -E
+
+    # Scale dynamic parameters by response slider
+    Kp = params["KpVal"] * response_speed
+    Ki = params["KiVal"] * response_speed
+    Imax = params["ImaxVal"] * response_speed
+    Ilimit = params["IlimitVal"]
+    STUP = params["StupVal"]
+
+    P = Kp * E
+    Iinc = (Ki * E) / 60.0
+    Iinc = np.clip(Iinc, -Imax / 60.0, Imax / 60.0)
+    if "Iprev_alerton" not in st.session_state:
+        st.session_state.Iprev_alerton = STUP
+    I = st.session_state.Iprev_alerton + Iinc
+    I = np.clip(I, -Ilimit, Ilimit)
+    st.session_state.Iprev_alerton = I
+    Output = 50 + P + I
+
+    st.subheader(f"{selected} Simulation Output")
+    st.json({
+        "Kp": round(Kp,3),
+        "Ki": round(Ki,3),
+        "Imax": round(Imax,3),
+        "I": round(I,3),
+        "Proportional (P)": round(P,3),
+        "Controller Output": round(Output,3),
+        "STUP": STUP,
+        "Ilimit": Ilimit,
+        "Acting Mode": pi_type
+    })
 
 # ------------------ PI Loop Overview ------------------
 st.markdown("---")
@@ -227,11 +204,9 @@ st.markdown(
     """
 ### Proportional Constant (Kp)
 - Controls how strongly output responds to error.  
-- Higher Kp → faster correction, but risk of overshoot.  
 
 ### Integral Constant (Ki)
 - Adjusts correction over time for persistent errors.  
-- Higher Ki → quicker correction of steady-state error, but can cause oscillation.  
 
 ### Maximum Integral Change (Imax)
 - Limits how fast the integral term can change per minute.  
@@ -243,7 +218,7 @@ st.markdown(
 - Sets initial integral value at startup.  
 
 ### Direct Acting vs Reverse Acting
-- **Direct Acting**: Output increases when feedback is below setpoint.  
-- **Reverse Acting**: Output increases when feedback is above setpoint.  
+- Direct Acting: output increases when feedback is below setpoint  
+- Reverse Acting: output increases when feedback is above setpoint
 """
 )
