@@ -7,7 +7,9 @@ st.set_page_config(page_title="PI Autotune Tool", layout="wide")
 st.title("PI Autotune Tool")
 
 # ------------------ Tabs ------------------
-tab1, tab2, tab3, tab4 = st.tabs(["Directions", "Simulation", "CSV Tuning", "Alerton"])
+tab1, tab2, tab3, tab4 = st.tabs(
+    ["Directions", "Simulation", "CSV Tuning", "Alerton"]
+)
 
 # ------------------ Directions Tab ------------------
 with tab1:
@@ -33,12 +35,21 @@ with tab2:
     STUP = st.sidebar.number_input("Integral startup (STUP)", value=0.0)
     ILMT = st.sidebar.number_input("Integral limit (ILMT)", value=100.0)
 
+    # Select PI Type
+    pi_type = st.sidebar.radio("PI Type", ["Direct Acting", "Reverse Acting"])
+
     if "Iprev" not in st.session_state:
         st.session_state.Iprev = STUP
 
+    # Calculate Error
     E = FB - SP
+    if pi_type == "Reverse Acting":
+        E = -E  # reverse the error for reverse acting mode
+
+    # Proportional
     P = Kp * E
 
+    # Integral
     if Ki == 0:
         Iinc = 0.0
         I = STUP
@@ -51,6 +62,7 @@ with tab2:
     st.session_state.Iprev = I
     Output = P + I + 50
 
+    # Display
     st.subheader("Simulation Results")
     st.write(f"Error (E): {E:.2f}")
     st.write(f"Proportional (P): {P:.2f}")
@@ -108,27 +120,6 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
             st.write(f"**Kp:** {suggested_Kp}")
             st.write(f"**Ki:** {suggested_Ki}")
 
-            st.subheader("Feedback / Analysis:")
-            avg_error = error.abs().mean()
-            st.write(f"Average Error: {avg_error:.2f}")
-
-            if avg_error < 0.5:
-                st.info("✅ Your system is stable; only small corrections are needed.")
-            elif avg_error < 2:
-                st.info("⚠️ Moderate error detected; PI tuning may improve stability.")
-            else:
-                st.warning("❌ Large error detected; system may need higher Kp or Ki.")
-
-            if suggested_Kp > 5:
-                st.warning("⚡ Kp is strong; monitor for overshoot.")
-            elif suggested_Kp < 0.5:
-                st.info("ℹ️ Kp is small; system response may be slow.")
-
-            if suggested_Ki > 1:
-                st.warning("🌀 Ki is strong; watch for oscillations.")
-            elif suggested_Ki < 0.05:
-                st.info("ℹ️ Ki is small; integral effect may be slow.")
-
             sim_feedback = [df["Feedback"].iloc[0]]
             I_term = 0.0
             for sp in df["Setpoint"]:
@@ -149,7 +140,7 @@ The app will suggest **Kp** and **Ki**, and provide feedback on the system behav
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    st.markdown("Choose a control strategy and adjust response speed (slow ↔ fast).")
+    st.markdown("Choose a control strategy and adjust **Response Speed** (slow ↔ fast).")
 
     controls = {
         "Standard Zone Heating Signal": dict(KpVal=12, KiVal=1),
@@ -164,9 +155,42 @@ with tab4:
     params = controls[selected]
 
     # Unified response speed slider
-    response_speed = st.slider("Response Speed", min_value=0.5, max_value=2.0, value=1.0, step=0.1)
+    response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
 
     scaled_params = {k: round(v * response_speed, 3) for k, v in params.items()}
 
     st.subheader(f"{selected} Parameters (scaled)")
     st.json(scaled_params)
+
+# ------------------ PI Loop Overview ------------------
+st.markdown("---")
+st.header("📘 PI Loop Overview")
+st.markdown(
+    """
+### Proportional Constant (Kp)
+- Controls how strongly output responds to error.  
+- Higher Kp → faster correction, but risk of overshoot.  
+- Example: Kp = 12.0, Setpoint = 74, Feedback = 76 → Error = 2 → Output adds 24.  
+
+### Integral Constant (Ki)
+- Adjusts correction over time for persistent errors.  
+- Higher Ki → quicker correction of steady-state error, but can cause oscillation.  
+- Example: Ki = 1.0 → Output increases by 2 per minute when error = 2.  
+
+### Maximum Integral Change (Imax)
+- Limits how fast the integral term can change per minute.  
+- Should match actuator speed (e.g., 20 for 5-min VAV damper stroke).  
+
+### Integral Limit (Ilimit)
+- Caps total integral contribution to prevent "windup".  
+- Typically ±50 to keep output within 0–100%.  
+
+### Integral Startup (STUP)
+- Sets initial integral value at startup.  
+- Example: If startup output should be 20, set STUP = -30 (50 + -30 = 20).  
+
+### Direct Acting vs Reverse Acting
+- **Direct Acting**: Output increases when feedback is below setpoint.  
+- **Reverse Acting**: Output increases when feedback is above setpoint.  
+"""
+)
