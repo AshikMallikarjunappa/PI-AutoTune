@@ -3,66 +3,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ------------------ Page Config ------------------
-st.set_page_config(
-    page_title="PI Loop Autotune Tool by Ashik",
-    layout="wide",
-)
+st.set_page_config(page_title="PI Loop Autotune Tool by Ashik", layout="wide")
 
-# ------------------ Custom CSS for Modern UI ------------------
-st.markdown("""
-    <style>
-    .stApp {
-        background: linear-gradient(135deg, #1e3c72, #2a5298);
-        color: white;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    h1, h2, h3, h4, h5, h6 {
-        color: white !important;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    }
-    p, label, span {
-        color: white !important;
-    }
-    .stButton>button {
-        background: linear-gradient(90deg,#00c6ff,#0072ff);
-        color: white;
-        border-radius: 10px;
-        height: 3em;
-        font-weight: 600;
-    }
-    .stSlider>div>div>div>div>div {
-        color: #00c6ff !important;
-    }
-    .stSelectbox>div>div>div>div {
-        background-color: #0072ff !important;
-        color: white !important;
-        border-radius: 8px;
-    }
-    .stRadio>div>div>label {
-        color: white !important;
-        font-weight: 600;
-    }
-    .stCodeBlock, pre {
-        background-color: #0a0a0a !important;
-        color: #00ffff !important;
-        border-radius: 10px;
-        padding: 15px;
-        font-size: 1rem;
-    }
-    .stFileUploader>div>div>label {
-        color: white !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# ------------------ Display Title and Photo ------------------
+st.title("PI Loop Autotune Tool by Ashik")
 
-# ------------------ Header ------------------
-st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg", caption="Ashik", use_container_width=True)
-st.markdown("<h1>PI Loop Autotune Tool by Ashik</h1>", unsafe_allow_html=True)
+# Displaying the profile picture from GitHub
+st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg?raw=true", caption="Ashik", width=300)
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4 PID"]
+    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4"]
 )
 
 # ------------------ Directions Tab ------------------
@@ -71,8 +22,8 @@ with tab1:
     st.markdown("""
     - Use **Simulation** tab to test PI control response.
     - Use **CSV Tuning** tab to upload tuning values and visualize results.
-    - Use **Alerton Presets** tab to quickly select standard tuning strategies.
-    - Use **Niagara 4 PID** tab to view tuned PID constants for various control types.
+    - Use **Alerton Presets** tab for standard tuning strategies.
+    - Use **Niagara 4** tab for PID tuning with Kp, Ki, Kd.
     """)
 
 # ------------------ Simulation Tab ------------------
@@ -97,7 +48,7 @@ with tab2:
         output = P + I
         outputs.append(output)
         errors.append(error)
-        FB += output * 0.01
+        FB += output * 0.01  # simple process response
 
     st.line_chart(pd.DataFrame({"Output": outputs, "Error": errors}))
 
@@ -118,16 +69,77 @@ with tab3:
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    st.markdown("*(Alerton presets functionality placeholder – you can add your presets here)*")
+    st.markdown("Select a control strategy and adjust Response Speed.")
 
-# ------------------ Niagara 4 PID Tab ------------------
+    controls = {
+        "Standard Zone Heating Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
+        "Standard Zone Cooling Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
+        "Standard Economizer Control": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50},
+        "Standard Supply DSP Control": {"Kp": 0, "Ki": 30, "Imax": 60, "Ilimit": 50},
+        "Standard SAT Heating Valve": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50},
+        "Standard BSP Fan Control": {"Kp": 0, "Ki": 25, "Imax": 20, "Ilimit": 50}
+    }
+
+    selected = st.selectbox("Select control strategy:", list(controls.keys()))
+    params = controls[selected]
+    response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
+    da_choice = st.radio("Control Action:", ["Direct Acting", "Reverse Acting"])
+    DA = 1 if da_choice == "Direct Acting" else 0
+
+    # --- STUP Logic ---
+    if selected in ["Standard Zone Heating Signal", "Standard Zone Cooling Signal"]:
+        STUP = -30 if DA == 1 else 30
+    elif selected == "Standard Supply DSP Control":
+        STUP = -30 if DA == 1 else 30
+    elif selected == "Standard BSP Fan Control":
+        STUP = 0
+    else:
+        STUP = -50 if DA == 1 else 50
+
+    # Scale values
+    scaled_params = {
+        "Kp": round(params["Kp"] * response_speed, 3),
+        "Ki": round(params["Ki"] * response_speed, 3),
+        "Imax": round(params["Imax"] * response_speed, 3),
+        "Ilimit": params["Ilimit"],
+        "STUP": STUP
+    }
+
+    st.subheader(f"{selected} Parameters (scaled by Response Speed)")
+    st.json(scaled_params)
+
+    # PI calculation
+    FB = st.number_input("Feedback (FB)", value=22.0, key="alerton_fb")
+    SP = st.number_input("Setpoint (SP)", value=24.0, key="alerton_sp")
+    E = SP - FB if DA == 1 else FB - SP
+    P = scaled_params["Kp"] * E
+    if "Iprev_alerton" not in st.session_state:
+        st.session_state.Iprev_alerton = scaled_params["STUP"]
+    Iinc = (scaled_params["Ki"] * E) / 60.0
+    Iinc = np.clip(Iinc, -scaled_params["Imax"] / 60.0, scaled_params["Imax"] / 60.0)
+    I = st.session_state.Iprev_alerton + Iinc
+    I = np.clip(I, -scaled_params["Ilimit"], scaled_params["Ilimit"])
+    st.session_state.Iprev_alerton = I
+    Output = P + I + 50
+
+    st.write(f"Error (E): {E:.2f}")
+    st.write(f"Proportional (P): {P:.2f}")
+    st.write(f"Integral (I): {I:.2f}")
+    st.write(f"**Controller Output: {Output:.2f}**")
+
+# ------------------ Niagara 4 Tab ------------------
 with tab5:
     st.header("Niagara 4 PID Tuning")
-    st.markdown("<div style='background-color:#0a2a5e; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
+    st.markdown("""
+    Define the PID constants for LoopPoint objects.
+    - **Direct Acting** or **Reverse Acting**
+    - Heating, Cooling, Pressure, or Damper control
+    """)
 
     niagara_type = st.selectbox("Select Control Type:", ["Heating", "Cooling", "Pressure", "Damper"])
     loop_action = st.radio("Loop Action:", ["Direct", "Reverse"])
 
+    # Default tuned values for demonstration
     niagara_tuning = {
         "Heating": {"Direct": {"Kp": 2.0, "Ki": 0.5, "Kd": 0.1},
                     "Reverse": {"Kp": 1.8, "Ki": 0.4, "Kd": 0.08}},
@@ -135,12 +147,10 @@ with tab5:
                     "Reverse": {"Kp": 1.2, "Ki": 0.25, "Kd": 0.04}},
         "Pressure": {"Direct": {"Kp": 3.0, "Ki": 0.8, "Kd": 0.2},
                      "Reverse": {"Kp": 2.5, "Ki": 0.7, "Kd": 0.15}},
-        "Damper": {"Direct": {"Kp": 1.0, "Ki": 0.2, "Kd": 0.05},
-                   "Reverse": {"Kp": 0.9, "Ki": 0.15, "Kd": 0.04}}
+        "Damper": {"Direct": {"Kp": 0.8, "Ki": 0.2, "Kd": 0.05},
+                   "Reverse": {"Kp": 0.6, "Ki": 0.15, "Kd": 0.03}}
     }
 
-    tuning = niagara_tuning[niagara_type][loop_action]
-    st.subheader(f"{niagara_type} PID Constants ({loop_action})")
-    st.code(tuning, language="json")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    tuned = niagara_tuning[niagara_type][loop_action]
+    st.subheader(f"Tuned PID Constants for {niagara_type} ({loop_action})")
+    st.json(tuned)
