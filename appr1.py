@@ -13,41 +13,45 @@ st.set_page_config(
 st.markdown("""
     <style>
     .stApp {
-        background: linear-gradient(135deg, #e0eafc, #cfdef3);
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    h1 {
-        color: #0a3d62;
-        text-align: center;
-        font-weight: 800;
-        font-size: 3rem;
-        margin-bottom: 0.5rem;
-        text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+    h1, h2, h3, h4, h5, h6 {
+        color: white !important;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    }
+    p, label, span {
+        color: white !important;
     }
     .stButton>button {
-        background: linear-gradient(90deg,#0fbcf9,#1e90ff);
+        background: linear-gradient(90deg,#00c6ff,#0072ff);
         color: white;
         border-radius: 10px;
         height: 3em;
+        font-weight: 600;
     }
     .stSlider>div>div>div>div>div {
-        color: #1e90ff;
+        color: #00c6ff !important;
     }
     .stSelectbox>div>div>div>div {
-        background-color: #1e90ff;
-        color: white;
+        background-color: #0072ff !important;
+        color: white !important;
         border-radius: 8px;
     }
     .stRadio>div>div>label {
-        color: #0a3d62;
+        color: white !important;
         font-weight: 600;
     }
     .stCodeBlock, pre {
-        background-color: #1e1e1e !important;
-        color: #d4d4d4 !important;
+        background-color: #0a0a0a !important;
+        color: #00ffff !important;
         border-radius: 10px;
         padding: 15px;
         font-size: 1rem;
+    }
+    .stFileUploader>div>div>label {
+        color: white !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -114,12 +118,12 @@ with tab3:
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    # ... (same code as previous Alerton tab, unchanged) ...
+    st.markdown("*(Alerton presets functionality placeholder – you can add your presets here)*")
 
 # ------------------ Niagara 4 PID Tab ------------------
 with tab5:
     st.header("Niagara 4 PID Tuning")
-    st.markdown("<div style='background-color:#f0f4f8; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='background-color:#0a2a5e; padding:15px; border-radius:10px;'>", unsafe_allow_html=True)
 
     niagara_type = st.selectbox("Select Control Type:", ["Heating", "Cooling", "Pressure", "Damper"])
     loop_action = st.radio("Loop Action:", ["Direct", "Reverse"])
