@@ -86,7 +86,9 @@ with tab4:
     DA = 1 if da_choice == "Direct Acting" else 0
 
     # --- STUP Logic ---
-    if selected == "Standard Supply DSP Control":
+    if selected in ["Standard Zone Heating Signal", "Standard Zone Cooling Signal"]:
+        STUP = -30 if DA == 1 else 30
+    elif selected == "Standard Supply DSP Control":
         STUP = -30 if DA == 1 else 30
     elif selected == "Standard BSP Fan Control":
         STUP = 0
