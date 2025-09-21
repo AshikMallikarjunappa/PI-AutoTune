@@ -5,11 +5,48 @@ import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="PI Loop Autotune Tool by Ashik", layout="wide")
 
-# ------------------ Display Title and Photo ------------------
-st.title("PI Loop Autotune Tool by Ashik")
+# ------------------ Custom CSS ------------------
+st.markdown("""
+    <style>
+    /* Fancy Title */
+    .title {
+        font-size: 48px;
+        font-weight: bold;
+        color: #1F77B4;
+        text-align: center;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        text-shadow: 2px 2px 5px #aaa;
+    }
+    
+    /* Profile image styling */
+    .profile-img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        border-radius: 50%;
+        border: 5px solid #1F77B4;
+        width: 200px;
+        height: 200px;
+    }
+    
+    /* Tab header styling */
+    .stTabs [role="tab"] {
+        font-weight: bold;
+        font-size: 18px;
+    }
 
-# Displaying the profile picture from GitHub
-st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg?raw=true", caption="Ashik", width=300)
+    /* Slider style */
+    div[data-baseweb="slider"] > div {
+        background-color: #1F77B4;
+    }
+
+    </style>
+""", unsafe_allow_html=True)
+
+# ------------------ Display Title and Photo ------------------
+st.markdown('<div class="title">✨ PI Loop Autotune Tool by Ashik ✨</div>', unsafe_allow_html=True)
+st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg?raw=true",
+         caption="Ashik", use_container_width=False, width=200, output_format="auto")
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
@@ -48,7 +85,7 @@ with tab2:
         output = P + I
         outputs.append(output)
         errors.append(error)
-        FB += output * 0.01  # simple process response
+        FB += output * 0.01
 
     st.line_chart(pd.DataFrame({"Output": outputs, "Error": errors}))
 
@@ -60,9 +97,10 @@ with tab3:
         df = pd.read_csv(uploaded_file)
         st.dataframe(df)
         fig, ax = plt.subplots()
-        ax.plot(df["Kp"], label="Kp")
-        ax.plot(df["Ki"], label="Ki")
-        ax.plot(df["Imax"], label="Imax")
+        ax.plot(df["Kp"], label="Kp", marker='o')
+        ax.plot(df["Ki"], label="Ki", marker='s')
+        ax.plot(df["Imax"], label="Imax", marker='^')
+        ax.set_title("Tuning Parameters")
         ax.legend()
         st.pyplot(fig)
 
@@ -86,7 +124,6 @@ with tab4:
     da_choice = st.radio("Control Action:", ["Direct Acting", "Reverse Acting"])
     DA = 1 if da_choice == "Direct Acting" else 0
 
-    # --- STUP Logic ---
     if selected in ["Standard Zone Heating Signal", "Standard Zone Cooling Signal"]:
         STUP = -30 if DA == 1 else 30
     elif selected == "Standard Supply DSP Control":
@@ -96,7 +133,6 @@ with tab4:
     else:
         STUP = -50 if DA == 1 else 50
 
-    # Scale values
     scaled_params = {
         "Kp": round(params["Kp"] * response_speed, 3),
         "Ki": round(params["Ki"] * response_speed, 3),
@@ -108,7 +144,6 @@ with tab4:
     st.subheader(f"{selected} Parameters (scaled by Response Speed)")
     st.json(scaled_params)
 
-    # PI calculation
     FB = st.number_input("Feedback (FB)", value=22.0, key="alerton_fb")
     SP = st.number_input("Setpoint (SP)", value=24.0, key="alerton_sp")
     E = SP - FB if DA == 1 else FB - SP
@@ -121,7 +156,6 @@ with tab4:
     I = np.clip(I, -scaled_params["Ilimit"], scaled_params["Ilimit"])
     st.session_state.Iprev_alerton = I
     Output = P + I + 50
-
     st.write(f"Error (E): {E:.2f}")
     st.write(f"Proportional (P): {P:.2f}")
     st.write(f"Integral (I): {I:.2f}")
@@ -130,16 +164,9 @@ with tab4:
 # ------------------ Niagara 4 Tab ------------------
 with tab5:
     st.header("Niagara 4 PID Tuning")
-    st.markdown("""
-    Define the PID constants for LoopPoint objects.
-    - **Direct Acting** or **Reverse Acting**
-    - Heating, Cooling, Pressure, or Damper control
-    """)
-
+    st.markdown("Define the PID constants for LoopPoint objects.")
     niagara_type = st.selectbox("Select Control Type:", ["Heating", "Cooling", "Pressure", "Damper"])
     loop_action = st.radio("Loop Action:", ["Direct", "Reverse"])
-
-    # Default tuned values for demonstration
     niagara_tuning = {
         "Heating": {"Direct": {"Kp": 2.0, "Ki": 0.5, "Kd": 0.1},
                     "Reverse": {"Kp": 1.8, "Ki": 0.4, "Kd": 0.08}},
@@ -150,7 +177,6 @@ with tab5:
         "Damper": {"Direct": {"Kp": 0.8, "Ki": 0.2, "Kd": 0.05},
                    "Reverse": {"Kp": 0.6, "Ki": 0.15, "Kd": 0.03}}
     }
-
     tuned = niagara_tuning[niagara_type][loop_action]
     st.subheader(f"Tuned PID Constants for {niagara_type} ({loop_action})")
     st.json(tuned)
