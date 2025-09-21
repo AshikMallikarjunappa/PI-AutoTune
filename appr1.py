@@ -3,86 +3,48 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="PI Loop Autotune Tool by Ashik", layout="wide")
+# ------------------ Page Config ------------------
+st.set_page_config(
+    page_title="PI Loop Autotune Tool by Ashik",
+    layout="wide",
+)
 
-# ------------------ Custom CSS ------------------
-st.markdown("""
+# ------------------ Custom CSS for Modern UI ------------------
+st.markdown(
+    """
     <style>
-    /* Global Styles */
-    body {
-        background: linear-gradient(135deg, #6e7dff, #a0bfff);
+    .stApp {
+        background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        color: #333;
     }
-    
-    /* Title Styling */
-    .title {
-        font-size: 48px;
-        font-weight: bold;
-        color: #ffffff;
+    h1 {
+        color: #0a3d62;
         text-align: center;
-        margin-top: 20px;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        font-weight: 700;
+        font-size: 3rem;
+        margin-bottom: 0.3rem;
     }
-    
-    /* Profile Image Styling */
-    .profile-img {
-        display: block;
-        margin: 20px auto;
-        border-radius: 50%;
-        border: 5px solid #ffffff;
-        width: 150px;
-        height: 150px;
+    .stButton>button {
+        background: linear-gradient(90deg,#0fbcf9,#1e90ff);
+        color: white;
+        border-radius: 10px;
+        height: 3em;
     }
-    
-    /* Card Layout */
-    .card {
-        background-color: #ffffff;
-        border-radius: 15px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        padding: 20px;
-        margin: 20px 0;
-        transition: transform 0.3s ease;
+    .stSlider>div>div>div>div>div {
+        color: #1e90ff;
     }
-    
-    .card:hover {
-        transform: translateY(-5px);
-    }
-    
-    /* Tab Styling */
-    .stTabs [role="tab"] {
-        font-weight: bold;
-        font-size: 18px;
-        color: #ffffff;
-        background-color: #4c6ef5;
-        border-radius: 5px;
-        padding: 10px 20px;
-    }
-
-    .stTabs [role="tab"]:hover {
-        background-color: #3a5bbf;
-    }
-
-    .stTabs [role="tab"][aria-selected="true"] {
-        background-color: #3a5bbf;
-    }
-
-    /* Slider Styling */
-    div[data-baseweb="slider"] > div {
-        background-color: #4c6ef5;
-    }
-
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
-# ------------------ Display Title and Photo ------------------
-st.markdown('<div class="title">✨ PI Loop Autotune Tool by Ashik ✨</div>', unsafe_allow_html=True)
-st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg?raw=true",
-         caption="Ashik", use_container_width=False, width=150, output_format="auto")
+# ------------------ Header ------------------
+st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg", caption="Ashik", use_container_width=True)
+st.markdown("<h1>PI Loop Autotune Tool by Ashik</h1>", unsafe_allow_html=True)
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4"]
+    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4 PID"]
 )
 
 # ------------------ Directions Tab ------------------
@@ -91,8 +53,8 @@ with tab1:
     st.markdown("""
     - Use **Simulation** tab to test PI control response.
     - Use **CSV Tuning** tab to upload tuning values and visualize results.
-    - Use **Alerton Presets** tab for standard tuning strategies.
-    - Use **Niagara 4** tab for PID tuning with Kp, Ki, Kd.
+    - Use **Alerton Presets** tab to quickly select standard tuning strategies.
+    - Use **Niagara 4 PID** tab to view tuned PID constants for various control types.
     """)
 
 # ------------------ Simulation Tab ------------------
@@ -117,7 +79,7 @@ with tab2:
         output = P + I
         outputs.append(output)
         errors.append(error)
-        FB += output * 0.01
+        FB += output * 0.01  # process response
 
     st.line_chart(pd.DataFrame({"Output": outputs, "Error": errors}))
 
@@ -129,18 +91,15 @@ with tab3:
         df = pd.read_csv(uploaded_file)
         st.dataframe(df)
         fig, ax = plt.subplots()
-        ax.plot(df["Kp"], label="Kp", marker='o')
-        ax.plot(df["Ki"], label="Ki", marker='s')
-        ax.plot(df["Imax"], label="Imax", marker='^')
-        ax.set_title("Tuning Parameters")
+        ax.plot(df["Kp"], label="Kp")
+        ax.plot(df["Ki"], label="Ki")
+        ax.plot(df["Imax"], label="Imax")
         ax.legend()
         st.pyplot(fig)
 
 # ------------------ Alerton Tab ------------------
 with tab4:
     st.header("Alerton Control Strategies")
-    st.markdown("Select a control strategy and adjust Response Speed.")
-
     controls = {
         "Standard Zone Heating Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
         "Standard Zone Cooling Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
@@ -193,12 +152,12 @@ with tab4:
     st.write(f"Integral (I): {I:.2f}")
     st.write(f"**Controller Output: {Output:.2f}**")
 
-# ------------------ Niagara 4 Tab ------------------
+# ------------------ Niagara 4 PID Tab ------------------
 with tab5:
     st.header("Niagara 4 PID Tuning")
-    st.markdown("Define the PID constants for LoopPoint objects.")
     niagara_type = st.selectbox("Select Control Type:", ["Heating", "Cooling", "Pressure", "Damper"])
     loop_action = st.radio("Loop Action:", ["Direct", "Reverse"])
+
     niagara_tuning = {
         "Heating": {"Direct": {"Kp": 2.0, "Ki": 0.5, "Kd": 0.1},
                     "Reverse": {"Kp": 1.8, "Ki": 0.4, "Kd": 0.08}},
@@ -206,6 +165,10 @@ with tab5:
                     "Reverse": {"Kp": 1.2, "Ki": 0.25, "Kd": 0.04}},
         "Pressure": {"Direct": {"Kp": 3.0, "Ki": 0.8, "Kd": 0.2},
                      "Reverse": {"Kp": 2.5, "Ki": 0.7, "Kd": 0.15}},
-        "Damper": {"Direct
-::contentReference[oaicite:0]{index=0}
- 
+        "Damper": {"Direct": {"Kp": 1.0, "Ki": 0.2, "Kd": 0.05},
+                   "Reverse": {"Kp": 0.9, "Ki": 0.15, "Kd": 0.04}}
+    }
+
+    tuning = niagara_tuning[niagara_type][loop_action]
+    st.subheader(f"{niagara_type} PID Constants ({loop_action})")
+    st.json(tuning)
