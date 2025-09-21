@@ -3,7 +3,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="PI Loop Tuning Tool", layout="wide")
+# ------------------ Page Config ------------------
+st.set_page_config(page_title="PI Loop Autotune Tool by Ashik", layout="wide")
+
+# ------------------ Display Title and Photo ------------------
+st.title("PI Loop Autotune Tool by Ashik")
+
+# Replace 'your_photo.jpg' with the actual path of your image
+st.image("your_photo.jpg", caption="Ashik", use_column_width=True)
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
@@ -12,9 +19,8 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(
 
 # ------------------ Directions Tab ------------------
 with tab1:
-    st.title("PI Loop Tuning Tool")
+    st.header("Instructions")
     st.markdown("""
-    ### Instructions:
     - Use **Simulation** tab to test PI control response.
     - Use **CSV Tuning** tab to upload tuning values and visualize results.
     - Use **Alerton Presets** tab to quickly select standard tuning strategies.
@@ -44,7 +50,7 @@ with tab2:
         output = P + I
         outputs.append(output)
         errors.append(error)
-        FB += output * 0.01  # process response
+        FB += output * 0.01
 
     st.line_chart(pd.DataFrame({"Output": outputs, "Error": errors}))
 
@@ -86,7 +92,6 @@ with tab4:
     da_choice = st.radio("Control Action:", ["Direct Acting", "Reverse Acting"])
     DA = 1 if da_choice == "Direct Acting" else 0
 
-    # --- STUP Logic ---
     if selected in ["Standard Zone Heating Signal", "Standard Zone Cooling Signal"]:
         STUP = -30 if DA == 1 else 30
     elif selected == "Standard Supply DSP Control":
@@ -96,7 +101,6 @@ with tab4:
     else:
         STUP = -50 if DA == 1 else 50
 
-    # Scale values
     scaled_params = {
         "Kp": round(params["Kp"] * response_speed, 3),
         "Ki": round(params["Ki"] * response_speed, 3),
@@ -108,14 +112,13 @@ with tab4:
     st.subheader(f"{selected} Parameters (scaled by Response Speed)")
     st.json(scaled_params)
 
-    # --- PI Calculation ---
     st.subheader("Controller Output Calculation")
     FB = st.number_input("Feedback (FB)", value=22.0, key="alerton_fb")
     SP = st.number_input("Setpoint (SP)", value=24.0, key="alerton_sp")
 
-    if DA == 1:  # Direct Acting
+    if DA == 1:
         E = SP - FB
-    else:  # Reverse Acting
+    else:
         E = FB - SP
 
     P = scaled_params["Kp"] * E
@@ -141,7 +144,6 @@ with tab5:
     st.header("Niagara 4 LoopPoint Tuning")
     st.markdown("Select a Niagara 4 loop type and control action to view tuned PID values.")
 
-    # Define Niagara 4 standard loops with tuned PID values
     n4_loops = {
         "Zone Heating Loop": {"Direct": {"Kp": 12.0, "Ki": 0.8, "Kd": 0.5},
                               "Reverse": {"Kp": 12.0, "Ki": 0.8, "Kd": 0.5}},
