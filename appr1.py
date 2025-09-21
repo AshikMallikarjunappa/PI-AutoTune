@@ -26,7 +26,6 @@ Welcome to the **PI Autotune Tool**! This app lets you simulate a PI controller 
 
 # ------------------ Simulation Tab ------------------
 with tab2:
-    st.header("Manual PI Simulation")
     st.sidebar.header("Simulation Inputs")
     FB = st.sidebar.number_input("Feedback (FB)", value=22.0)
     SP = st.sidebar.number_input("Setpoint (SP)", value=24.0)
@@ -36,11 +35,14 @@ with tab2:
     STUP = st.sidebar.number_input("Integral startup (STUP)", value=0.0)
     ILMT = st.sidebar.number_input("Integral limit (ILMT)", value=100.0)
 
+    # Select PI Type
+    pi_type = st.sidebar.radio("PI Type", ["Direct Acting", "Reverse Acting"])
+
     if "Iprev" not in st.session_state:
         st.session_state.Iprev = STUP
 
     # Calculate Error
-    E = FB - SP
+    E = SP - FB if pi_type == "Direct Acting" else FB - SP
 
     # Proportional
     P = Kp * E
@@ -140,12 +142,12 @@ with tab4:
 
     # Alerton presets with corrected STUP values
     controls = {
-        "Standard Zone Heating Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50, "STUP": 30},
-        "Standard Zone Cooling Signal": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50, "STUP": -30},
-        "Standard Economizer Control": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50, "STUP": -50},
-        "Standard Supply DSP Control": {"Kp": 0, "Ki": 30, "Imax": 60, "Ilimit": 50, "STUP": 30},
-        "Standard SAT Heating Valve": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50, "STUP": 50},
-        "Standard BSP Fan Control": {"Kp": 0, "Ki": 25, "Imax": 20, "Ilimit": 50, "STUP": 0}
+        "Standard Zone Heating Signal": {"DA": 0, "Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50, "STUP": 30},
+        "Standard Zone Cooling Signal": {"DA": 1, "Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50, "STUP": -30},
+        "Standard Economizer Control": {"DA": 1, "Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50, "STUP": -50},
+        "Standard Supply DSP Control": {"DA": 0, "Kp": 0, "Ki": 30, "Imax": 60, "Ilimit": 50, "STUP": 30},
+        "Standard SAT Heating Valve": {"DA": 0, "Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50, "STUP": 50},
+        "Standard BSP Fan Control": {"DA": 1, "Kp": 0, "Ki": 25, "Imax": 20, "Ilimit": 50, "STUP": 0}
     }
 
     selected = st.selectbox("Select control strategy:", list(controls.keys()))
@@ -154,7 +156,11 @@ with tab4:
     # Response Speed slider
     response_speed = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1)
 
-    # Scale Kp, Ki, Imax by slider; Ilimit and STUP remain fixed
+    # User can override Direct/Reverse acting
+    da_choice = st.radio("Control Action:", ["Direct Acting", "Reverse Acting"])
+    DA = 1 if da_choice == "Direct Acting" else 0
+
+    # Scale Kp, Ki, Imax by slider
     scaled_params = {
         "Kp": round(params["Kp"] * response_speed, 3),
         "Ki": round(params["Ki"] * response_speed, 3),
@@ -166,24 +172,31 @@ with tab4:
     st.subheader(f"{selected} Parameters (scaled by Response Speed)")
     st.json(scaled_params)
 
-# ------------------ PI Loop Overview ------------------
-st.markdown("---")
-st.header("📘 PI Loop Overview")
-st.markdown(
-    """
-### Proportional Constant (Kp)
-- Controls how strongly output responds to error.  
+    # --- Simple PI Output Calculation ---
+    st.subheader("Controller Output Calculation")
+    FB = st.number_input("Feedback (FB)", value=22.0, key="alerton_fb")
+    SP = st.number_input("Setpoint (SP)", value=24.0, key="alerton_sp")
 
-### Integral Constant (Ki)
-- Adjusts correction over time for persistent errors.  
+    # Error depends on DA/RA selection
+    if DA == 1:  # Direct Acting
+        E = SP - FB
+    else:  # Reverse Acting
+        E = FB - SP
 
-### Maximum Integral Change (Imax)
-- Limits how fast the integral term can change per minute.  
+    P = scaled_params["Kp"] * E
 
-### Integral Limit (Ilimit)
-- Caps total integral contribution to prevent "windup".  
+    if "Iprev_alerton" not in st.session_state:
+        st.session_state.Iprev_alerton = scaled_params["STUP"]
 
-### Integral Startup (STUP)
-- Sets initial integral value at startup.  
-"""
-)
+    Iinc = (scaled_params["Ki"] * E) / 60.0
+    Iinc = np.clip(Iinc, -scaled_params["Imax"] / 60.0, scaled_params["Imax"] / 60.0)
+    I = st.session_state.Iprev_alerton + Iinc
+    I = np.clip(I, -scaled_params["Ilimit"], scaled_params["Ilimit"])
+    st.session_state.Iprev_alerton = I
+
+    Output = P + I + 50  # 50 = neutral offset
+
+    st.write(f"Error (E): {E:.2f}")
+    st.write(f"Proportional (P): {P:.2f}")
+    st.write(f"Integral (I): {I:.2f}")
+    st.write(f"**Controller Output: {Output:.2f}**")
