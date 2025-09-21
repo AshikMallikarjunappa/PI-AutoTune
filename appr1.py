@@ -7,7 +7,7 @@ st.set_page_config(page_title="PI Loop Tuning Tool", layout="wide")
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4 Presets"]
+    ["Directions", "Simulation", "CSV Tuning", "Alerton Presets", "Niagara 4"]
 )
 
 # ------------------ Directions Tab ------------------
@@ -17,7 +17,8 @@ with tab1:
     ### Instructions:
     - Use **Simulation** tab to test PI control response.
     - Use **CSV Tuning** tab to upload tuning values and visualize results.
-    - Use **Alerton Presets** or **Niagara 4 Presets** tab to quickly select standard tuning strategies.
+    - Use **Alerton Presets** tab to quickly select standard tuning strategies.
+    - Use **Niagara 4** tab to view tuned PID values for LoopPoint.
     """)
 
 # ------------------ Simulation Tab ------------------
@@ -137,72 +138,30 @@ with tab4:
 
 # ------------------ Niagara 4 Tab ------------------
 with tab5:
-    st.header("Niagara 4 Presets")
-    st.markdown("Select a Niagara strategy and adjust Response Speed.")
+    st.header("Niagara 4 LoopPoint Tuning")
+    st.markdown("Select a Niagara 4 loop type and control action to view tuned PID values.")
 
-    controls_n4 = {
-        "N4 Zone Heating Loop": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
-        "N4 Zone Cooling Loop": {"Kp": 12, "Ki": 1, "Imax": 3, "Ilimit": 50},
-        "N4 Economizer Loop": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50},
-        "N4 Supply DSP Loop": {"Kp": 0, "Ki": 30, "Imax": 60, "Ilimit": 50},
-        "N4 Heating Valve SAT": {"Kp": 0.6, "Ki": 1.5, "Imax": 60, "Ilimit": 50},
-        "N4 BSP Fan Loop": {"Kp": 0, "Ki": 25, "Imax": 20, "Ilimit": 50}
+    # Define Niagara 4 standard loops with tuned PID values
+    n4_loops = {
+        "Zone Heating Loop": {"Direct": {"Kp": 12.0, "Ki": 0.8, "Kd": 0.5},
+                              "Reverse": {"Kp": 12.0, "Ki": 0.8, "Kd": 0.5}},
+        "Zone Cooling Loop": {"Direct": {"Kp": 14.0, "Ki": 1.0, "Kd": 0.6},
+                              "Reverse": {"Kp": 14.0, "Ki": 1.0, "Kd": 0.6}},
+        "Pressure Control Loop": {"Direct": {"Kp": 8.0, "Ki": 0.5, "Kd": 0.3},
+                                  "Reverse": {"Kp": 8.0, "Ki": 0.5, "Kd": 0.3}},
+        "Damper Control Loop": {"Direct": {"Kp": 10.0, "Ki": 0.7, "Kd": 0.4},
+                                "Reverse": {"Kp": 10.0, "Ki": 0.7, "Kd": 0.4}},
+        "Economizer Loop": {"Direct": {"Kp": 6.0, "Ki": 0.3, "Kd": 0.2},
+                            "Reverse": {"Kp": 6.0, "Ki": 0.3, "Kd": 0.2}},
+        "Supply DSP Loop": {"Direct": {"Kp": 5.0, "Ki": 0.5, "Kd": 0.2},
+                            "Reverse": {"Kp": 5.0, "Ki": 0.5, "Kd": 0.2}}
     }
 
-    selected_n4 = st.selectbox("Select Niagara strategy:", list(controls_n4.keys()))
-    params_n4 = controls_n4[selected_n4]
+    selected_n4 = st.selectbox("Select Niagara Loop Type:", list(n4_loops.keys()))
+    da_choice_n4 = st.radio("Loop Action:", ["Direct Acting", "Reverse Acting"])
+    action_n4 = "Direct" if da_choice_n4 == "Direct Acting" else "Reverse"
 
-    response_speed_n4 = st.slider("Response Speed (Slow ↔ Fast)", 0.5, 2.0, 1.0, 0.1, key="n4_speed")
+    tuned_values = n4_loops[selected_n4][action_n4]
 
-    da_choice_n4 = st.radio("Control Action (N4):", ["Direct Acting", "Reverse Acting"], key="n4_da")
-    DA_n4 = 1 if da_choice_n4 == "Direct Acting" else 0
-
-    # --- STUP Logic for Niagara ---
-    if selected_n4 in ["N4 Zone Heating Loop", "N4 Zone Cooling Loop"]:
-        STUP_n4 = -30 if DA_n4 == 1 else 30
-    elif selected_n4 == "N4 Supply DSP Loop":
-        STUP_n4 = -30 if DA_n4 == 1 else 30
-    elif selected_n4 == "N4 BSP Fan Loop":
-        STUP_n4 = 0
-    else:
-        STUP_n4 = -50 if DA_n4 == 1 else 50
-
-    # Scale values
-    scaled_params_n4 = {
-        "Kp": round(params_n4["Kp"] * response_speed_n4, 3),
-        "Ki": round(params_n4["Ki"] * response_speed_n4, 3),
-        "Imax": round(params_n4["Imax"] * response_speed_n4, 3),
-        "Ilimit": params_n4["Ilimit"],
-        "STUP": STUP_n4
-    }
-
-    st.subheader(f"{selected_n4} Parameters (scaled by Response Speed)")
-    st.json(scaled_params_n4)
-
-    # --- PI Calculation ---
-    st.subheader("Controller Output Calculation (Niagara)")
-    FB_n4 = st.number_input("Feedback (FB)", value=22.0, key="n4_fb_input")
-    SP_n4 = st.number_input("Setpoint (SP)", value=24.0, key="n4_sp_input")
-
-    if DA_n4 == 1:  # Direct Acting
-        E_n4 = SP_n4 - FB_n4
-    else:  # Reverse Acting
-        E_n4 = FB_n4 - SP_n4
-
-    P_n4 = scaled_params_n4["Kp"] * E_n4
-
-    if "Iprev_n4" not in st.session_state:
-        st.session_state.Iprev_n4 = scaled_params_n4["STUP"]
-
-    Iinc_n4 = (scaled_params_n4["Ki"] * E_n4) / 60.0
-    Iinc_n4 = np.clip(Iinc_n4, -scaled_params_n4["Imax"] / 60.0, scaled_params_n4["Imax"] / 60.0)
-    I_n4 = st.session_state.Iprev_n4 + Iinc_n4
-    I_n4 = np.clip(I_n4, -scaled_params_n4["Ilimit"], scaled_params_n4["Ilimit"])
-    st.session_state.Iprev_n4 = I_n4
-
-    Output_n4 = P_n4 + I_n4 + 50
-
-    st.write(f"Error (E): {E_n4:.2f}")
-    st.write(f"Proportional (P): {P_n4:.2f}")
-    st.write(f"Integral (I): {I_n4:.2f}")
-    st.write(f"**Controller Output: {Output_n4:.2f}**")
+    st.subheader(f"Tuned PID Values for {selected_n4} ({da_choice_n4})")
+    st.json(tuned_values)
