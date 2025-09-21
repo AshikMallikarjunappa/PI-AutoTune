@@ -8,36 +8,68 @@ st.set_page_config(page_title="PI Loop Autotune Tool by Ashik", layout="wide")
 # ------------------ Custom CSS ------------------
 st.markdown("""
     <style>
-    /* Fancy Title */
+    /* Global Styles */
+    body {
+        background: linear-gradient(135deg, #6e7dff, #a0bfff);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #333;
+    }
+    
+    /* Title Styling */
     .title {
         font-size: 48px;
         font-weight: bold;
-        color: #1F77B4;
+        color: #ffffff;
         text-align: center;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        text-shadow: 2px 2px 5px #aaa;
+        margin-top: 20px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
     }
     
-    /* Profile image styling */
+    /* Profile Image Styling */
     .profile-img {
         display: block;
-        margin-left: auto;
-        margin-right: auto;
+        margin: 20px auto;
         border-radius: 50%;
-        border: 5px solid #1F77B4;
-        width: 200px;
-        height: 200px;
+        border: 5px solid #ffffff;
+        width: 150px;
+        height: 150px;
     }
     
-    /* Tab header styling */
+    /* Card Layout */
+    .card {
+        background-color: #ffffff;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        margin: 20px 0;
+        transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    
+    /* Tab Styling */
     .stTabs [role="tab"] {
         font-weight: bold;
         font-size: 18px;
+        color: #ffffff;
+        background-color: #4c6ef5;
+        border-radius: 5px;
+        padding: 10px 20px;
     }
 
-    /* Slider style */
+    .stTabs [role="tab"]:hover {
+        background-color: #3a5bbf;
+    }
+
+    .stTabs [role="tab"][aria-selected="true"] {
+        background-color: #3a5bbf;
+    }
+
+    /* Slider Styling */
     div[data-baseweb="slider"] > div {
-        background-color: #1F77B4;
+        background-color: #4c6ef5;
     }
 
     </style>
@@ -46,7 +78,7 @@ st.markdown("""
 # ------------------ Display Title and Photo ------------------
 st.markdown('<div class="title">✨ PI Loop Autotune Tool by Ashik ✨</div>', unsafe_allow_html=True)
 st.image("https://github.com/AshikMallikarjunappa/PI-AutoTune/blob/main/Ashik.jpg?raw=true",
-         caption="Ashik", use_container_width=False, width=200, output_format="auto")
+         caption="Ashik", use_container_width=False, width=150, output_format="auto")
 
 # ------------------ Tabs ------------------
 tab1, tab2, tab3, tab4, tab5 = st.tabs(
@@ -174,9 +206,6 @@ with tab5:
                     "Reverse": {"Kp": 1.2, "Ki": 0.25, "Kd": 0.04}},
         "Pressure": {"Direct": {"Kp": 3.0, "Ki": 0.8, "Kd": 0.2},
                      "Reverse": {"Kp": 2.5, "Ki": 0.7, "Kd": 0.15}},
-        "Damper": {"Direct": {"Kp": 0.8, "Ki": 0.2, "Kd": 0.05},
-                   "Reverse": {"Kp": 0.6, "Ki": 0.15, "Kd": 0.03}}
-    }
-    tuned = niagara_tuning[niagara_type][loop_action]
-    st.subheader(f"Tuned PID Constants for {niagara_type} ({loop_action})")
-    st.json(tuned)
+        "Damper": {"Direct
+::contentReference[oaicite:0]{index=0}
+ 
